@@ -1,4 +1,5 @@
 from functools import reduce
+from itertools import product
 from copy import copy
 
 M = 3
@@ -6,7 +7,9 @@ N = M ** 2
 V = range(1,N+1)
 
 class IllegalMove(BaseException):
-    pass
+    def __init__(self, cell, value ):
+        self._cell = cell
+        self._value = value
 
 class IllegalBoard(BaseException):
     pass
@@ -55,7 +58,7 @@ class Cell(Unit):
     @value.setter
     def value(self, value):
         if not self.validate_move(value):
-            raise IllegalMove()
+            raise IllegalMove(self.coord, value)
         self._value = value
         self.values = None
         for x in [self.block, self.row, self.column]:
@@ -104,7 +107,7 @@ class Group(Unit):
         self.values.remove(value)
         for c in filter(lambda x: x.values, self.cells):
             c.values &= self.values
-            if c.values == set():
+            if len(c.values) == 0:
                 raise IllegalBoard()
 
     def groups(self):
@@ -116,6 +119,16 @@ class Group(Unit):
             else:
                 groups[tuple(c.values)] = [c]
         return groups
+
+    def open(self, n=None):
+        for c in self._cells:
+            if not c.value and (n is None or len(c.values) == n):
+                yield c
+
+    def combinations(self, n=None):
+        cells = list(self.open(n))
+        return list(map(lambda x: list(zip([c.coord for c in cells], x)),
+                        filter(lambda x: len(x) == len(set(x)), product(*[c.values for c in cells]))))
 
 class Block(Group):
     def __init__(self, cells):
@@ -162,10 +175,14 @@ class Board(Grid):
         self.rows = [Row(row(i)) for i in range(N)]
         self.columns = [Column(column(j)) for j in range(N)]
 
-        self._moves = []
-
     def __copy__(self):
         return Board([[copy(self.cells[i][j]) for j in range(N)] for i in range(N)])
+
+    def search(self):
+        blocks = sorted([block.combinations() for block in self.blocks], key=len)
+        rows = sorted([row.combinations() for row in self.rows], key=len)
+        columns = sorted([column.combinations() for column in self.columns], key=len)
+        return sorted(list(map(lambda x: next(iter(x)), filter(None,[blocks, rows, columns]))), key=len)
 
     def open(self, n=None):
         for c in self:
@@ -190,6 +207,7 @@ class Board(Grid):
         contains M-1 complete rows or columns then the remaining
         values apply exclusively to the 'open' row or column
         """
+        modified = 0
         for b in self.blocks:
             rows = {row: 0 for row in set([c.coord[0] for c in b.cells])}
             cols = {col: 0 for col in set([c.coord[1] for c in b.cells])}
@@ -205,15 +223,19 @@ class Board(Grid):
                 for row in rows:
                     values = reduce(lambda x, y: x | y.values, filter(lambda x: x.coord[0] == row and x.values, b.cells), set())
                     for c in self.rows[row].cells:
-                        if c.values and c.block is not b:
+                        if c.values and c.block is not b and values & c.values:
                             c.values -= values
+                            modified += 1
 
             if len(cols) == 1:
                 for col in cols:
                     values = reduce(lambda x, y: x | y.values, filter(lambda x: x.coord[1] == col and x.values, b.cells), set())
                     for c in self.columns[col].cells:
-                        if c.values and c.block is not b:
+                        if c.values and c.block is not b and values & c.values:
                             c.values -= values
+                            modified += 1
+
+            return modified
 
     @property
     def moves(self):
@@ -233,75 +255,71 @@ class Board(Grid):
         return "\n".join([",".join(map(lambda x: str(x.value or 0),self.cells[i])) for i in range(N)])
 
 class Move(object):
-    def __init__(self, board, move):
-        self.cell, self.value = move
-        self.parent = board
-        self.child = copy(board)
-        self.child(*self.cell).value = self.value
-        board.moves.append(self)
+    def __init__(self, marking, board=None, parent=None):
+        self.parent = parent
+        self.marking = marking
+        self.board = copy(board) if board else Board()
+
+        for cell, value in marking:
+            self.board(*cell).value = value
 
     def __str__(self):
-        return "{}={}".format("({},{})".format(*self.cell),self.value)
+        return " ".join(map(lambda m: "{}={}".format("({},{})".format(*m[0]),m[1]), self.marking))
 
 class Game(object):
-    def __init__(self, board):
-        self._board = board
+    def __init__(self, move, max_depth=10):
+        self._move = move
+        self._max_depth = max_depth
+
+    def pop(self):
+        self._move = self._move.parent
+        return self.board()
+
+    def push(self, move):
+        self._move = move
+        return self.board()
+
+    def board(self):
+        return self._move.board
+
+    def depth(self):
+        depth = 0
+        move = self._move
+        while move.parent:
+            move = move.parent
+            depth += 1
+        return depth
 
     def play(self, board=None):
-        board = board or self._board
+        board = board or self.board()
 
         while not board.terminal() and board.single_reduce():
-            board.block_reduce()
+            if not board.block_reduce():
+                break
 
-        for cell in board.open(n=2):
-            for value in cell.values:
-                try:
-                    move = Move(board, (cell.coord, value)) 
-                    print(move)
-                    print(move.child)
-                    attempt = self.play(move.child)
-                    if attempt.terminal():
-                        return attempt
-                except IllegalBoard:
-                    continue
+        if self.depth() >= self._max_depth:
+            return board
+
+        if not board.terminal():
+            for markings in board.search():
+                for move in list(map(lambda marking: Move(marking, board, self._move), markings)):
+                    try:
+                        board = self.play(self.push(move))
+                        if board.terminal():
+                            return board
+                    except IllegalBoard:
+                        pass
+
+                    board = self.pop()
 
         return board
 
-    @property
-    def board(self):
-        return self._board
+def game(marking):
+    return Game(Move(marking))
 
-    @staticmethod
-    def move(board, cell, value):
-        return Move(board, (cell, value)).child
-
-easy = Board()
-easy_marking = {
-    (0,0): 9, (0,3): 1,
-    (1,5): 8, (1,6): 5, (1,8): 6,
-    (2,3): 5, (2,4): 9, (2,5): 2, (2,6): 3,
-    (3,2): 1, (3,3): 3, (3,7): 6,
-    (4,0): 4, (4,1): 2, (4,3): 7, (4,4): 8, (4,5): 6, (4,7): 1, (4,8): 5,
-    (5,1): 7, (5,5): 1, (5,6): 4,
-    (6,2): 6, (6,3): 8, (6,4): 2, (6,5): 4,
-    (7,0): 1, (7,2): 5, (7,3): 9,
-    (8,5): 5, (8,8): 3
-}
-for c,v in easy_marking.items():
-    easy(*c).value = v
-
-hard = Board()
-hard_marking = {
-    (0,5): 8, (0,8): 1,
-    (1,1): 9, (1,2): 6, (1,6): 8, (1,8): 7,
-    (2,4): 3, (2,5): 7, (2,7):6,
-    (3,0): 6, (3,3): 2, (3,4): 1, (3,7): 3, (3,8): 4,
-    (4,2): 3, (4,6): 1,
-    (5,0): 5, (5,1): 1, (5,4): 4, (5,5): 3, (5,8): 9,
-    (6,1): 3, (6,3): 5, (6,4): 2,
-    (7,0): 2, (7,2): 4, (7,6): 9, (7,7): 5,
-    (8,0): 1, (8,3): 8
-}
-for c,v in hard_marking.items():
-    hard(*c).value = v
+def board(marking):
+    board = Board()
+    for c,v in marking:
+        board(*c).value = v
+    return board
 
