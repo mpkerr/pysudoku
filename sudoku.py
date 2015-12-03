@@ -1,6 +1,7 @@
 from functools import reduce
 from itertools import product
 from copy import copy
+from collections import namedtuple
 import operator
 
 M = 3
@@ -27,10 +28,12 @@ class Unit(object):
     def values(self, values):
         self._values = values
 
+Coord = namedtuple('Coord',['row','column'])
+
 class Cell(Unit):
     def __init__(self, row, column, value=None, values=None):
         super(Cell,self).__init__(None if value else values or set(V))
-        self._coord = (row, column)
+        self._coord = Coord(row, column)
         self._value = value
         self._block = None
         self._row = None
