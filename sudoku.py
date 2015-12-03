@@ -200,8 +200,9 @@ class Board(Grid):
     def __copy__(self):
         return Board([[copy(self.cells[i][j]) for j in range(N)] for i in range(N)])
 
-    def complexity(self, attr='blocks'):
-        return reduce(operator.mul, map(lambda x: len(x.values) if x.values else 1, getattr(self, attr)), 1)
+    def complexity(self, attr='cells'):
+        return reduce(operator.mul, map(lambda x: len(x.values) if x.values else 1,
+                                        self if attr == 'cells' else getattr(self, attr)), 1)
 
     def search(self):
         blocks = sorted([block.combinations() for block in self.blocks], key=len)
