@@ -110,16 +110,6 @@ class Group(Unit):
             if len(c.values) == 0:
                 raise IllegalBoard()
 
-    def groups(self):
-        """groups cells with the same open values"""
-        groups = {}
-        for c in filter(lambda x: x.values, self._cells):
-            if tuple(c.values) in groups:
-                groups[tuple(c.values)].append(c)
-            else:
-                groups[tuple(c.values)] = [c]
-        return groups
-
     def open(self, n=None):
         for c in self._cells:
             if not c.value and (n is None or len(c.values) == n):
@@ -135,6 +125,37 @@ class Block(Group):
         super(Block,self).__init__(cells)
         for c in cells:
             c.block = self
+
+    def reduce(self):
+        vals = set()
+
+        rowvals = {v: set() for v in self.values}
+        colvals = {v: set() for v in self.values}
+
+        for cell in filter(lambda c: c.values, self.cells):
+            for value in cell.values:
+                rowvals[value].add(cell.coord[0])
+                colvals[value].add(cell.coord[1])
+
+        for v in filter(lambda v: len(rowvals[v]) == 1, rowvals):
+            row = rowvals[v].pop()
+            for cell in self.cells:
+                if cell.coord[0] == row:
+                    for c in cell.row.cells:
+                        if c.block is not self and c.values and v in c.values:
+                            c.values.remove(v)
+                            vals.add(v)
+
+        for v in filter(lambda v: len(colvals[v]) == 1, colvals):
+            col = colvals[v].pop()
+            for cell in self.cells:
+                if cell.coord[1] == col:
+                    for c in cell.column.cells:
+                        if c.block is not self and c.values and v in c.values:
+                            c.values.remove(v)
+                            vals.add(v)
+
+        return vals
 
 class Row(Group):
     def __init__(self, cells):
@@ -195,47 +216,13 @@ class Board(Grid):
                 return False
         return True
 
-    def single_reduce(self):
-        singles = []
-        for single in self.open(1):
-            single.value = next(iter(single.values))
-            singles.append(single)
-        return singles
+    def reduce(self):
+        while True:
+            for cell in self.open(1):
+                cell.value = next(iter(cell.values))
 
-    def block_reduce(self):
-        """Apply the 'geometrical' argument. If this block
-        contains M-1 complete rows or columns then the remaining
-        values apply exclusively to the 'open' row or column
-        """
-        modified = 0
-        for b in self.blocks:
-            rows = {row: 0 for row in set([c.coord[0] for c in b.cells])}
-            cols = {col: 0 for col in set([c.coord[1] for c in b.cells])}
-            for c in b.cells:
-                row, column = c.coord
-                if not c.value:
-                    rows[row] += 1
-                    cols[column] += 1
-            rows = list(filter(lambda x: rows[x], rows))
-            cols = list(filter(lambda x: cols[x], cols))
-
-            if len(rows) == 1:
-                for row in rows:
-                    values = reduce(lambda x, y: x | y.values, filter(lambda x: x.coord[0] == row and x.values, b.cells), set())
-                    for c in self.rows[row].cells:
-                        if c.values and c.block is not b and values & c.values:
-                            c.values -= values
-                            modified += 1
-
-            if len(cols) == 1:
-                for col in cols:
-                    values = reduce(lambda x, y: x | y.values, filter(lambda x: x.coord[1] == col and x.values, b.cells), set())
-                    for c in self.columns[col].cells:
-                        if c.values and c.block is not b and values & c.values:
-                            c.values -= values
-                            modified += 1
-
-            return modified
+            if not reduce(lambda x, y: x or y, [block.reduce() for block in self.blocks], False):
+                break
 
     @property
     def moves(self):
@@ -260,8 +247,13 @@ class Move(object):
         self.marking = marking
         self.board = copy(board) if board else Board()
 
-        for cell, value in marking:
-            self.board(*cell).value = value
+        try:
+            for cell, value in marking:
+                self.board(*cell).value = value
+            self.board.reduce()
+            self.valid = True
+        except (IllegalBoard, IllegalMove):
+            self.valid = False
 
     def __str__(self):
         return " ".join(map(lambda m: "{}={}".format("({},{})".format(*m[0]),m[1]), self.marking))
@@ -293,22 +285,18 @@ class Game(object):
     def play(self, board=None):
         board = board or self.board()
 
-        while not board.terminal() and board.single_reduce():
-            if not board.block_reduce():
-                break
-
-        if self.depth() >= self._max_depth:
-            return board
-
         if not board.terminal():
+            if self.depth() >= self._max_depth:
+                return board
+
             for markings in board.search():
                 for move in list(map(lambda marking: Move(marking, board, self._move), markings)):
-                    try:
-                        board = self.play(self.push(move))
-                        if board.terminal():
-                            return board
-                    except IllegalBoard:
-                        pass
+                    if not move.valid:
+                        continue
+
+                    board = self.play(self.push(move))
+                    if board.terminal():
+                        return board
 
                     board = self.pop()
 
