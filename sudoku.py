@@ -1,5 +1,5 @@
 from functools import reduce
-from itertools import product
+from itertools import product, combinations
 from copy import copy
 from collections import namedtuple
 import operator
@@ -8,13 +8,16 @@ M = 3
 N = M ** 2
 V = range(1,N+1)
 
+
 class IllegalMove(BaseException):
     def __init__(self, cell, value ):
         self._cell = cell
         self._value = value
 
+
 class IllegalBoard(BaseException):
     pass
+
 
 class Unit(object):
     def __init__(self, values):
@@ -29,6 +32,7 @@ class Unit(object):
         self._values = values
 
 Coord = namedtuple('Coord',['row','column'])
+
 
 class Cell(Unit):
     def __init__(self, row, column, value=None, values=None):
@@ -98,9 +102,10 @@ class Cell(Unit):
     def __repr__(self):
         return self.__str__()
 
+
 class Group(Unit):
     def __init__(self, cells):
-        super(Group,self).__init__(reduce(lambda x, y: x | y, filter(None, map(lambda x: x.values, cells)), set()))
+        super(Group, self).__init__(reduce(lambda x, y: x | y, filter(None, map(lambda x: x.values, cells)), set()))
         self._cells = cells
 
     @property
@@ -124,14 +129,28 @@ class Group(Unit):
         return list(map(lambda x: list(zip([c.coord for c in cells], x)),
                         filter(lambda x: len(x) == len(set(x)), product(*[c.values for c in cells]))))
 
+    def reduce(self):
+        vals = set()
+        for count in range(2, M+1):
+            pairs = list(self.open(count))
+            if len(pairs) >= count:
+                for pairwise in combinations(pairs, count):
+                    if reduce(operator.eq, map(lambda x: x.values, pairwise)):
+                        for c in self.cells:
+                            if c.values and c not in pairwise:
+                                vals += c.values - pairwise[0].values
+                                c.values &= pairwise[0].values
+        return vals
+
+
 class Block(Group):
     def __init__(self, cells):
-        super(Block,self).__init__(cells)
+        super(Block, self).__init__(cells)
         for c in cells:
             c.block = self
 
     def reduce(self):
-        vals = set()
+        vals = super(Block, self).reduce()
 
         rowvals = {v: set() for v in self.values}
         colvals = {v: set() for v in self.values}
@@ -141,25 +160,21 @@ class Block(Group):
                 rowvals[value].add(cell.coord[0])
                 colvals[value].add(cell.coord[1])
 
-        for v in filter(lambda v: len(rowvals[v]) == 1, rowvals):
-            row = rowvals[v].pop()
-            for cell in self.cells:
-                if cell.coord[0] == row:
-                    for c in cell.row.cells:
-                        if c.block is not self and c.values and v in c.values:
-                            c.values.remove(v)
-                            vals.add(v)
+        def apply(valdict, axis):
+            for v in filter(lambda v: len(valdict[v]) == 1, valdict):
+                k = valdict[v].pop()
+                for cell in self.cells:
+                    if getattr(cell.coord, axis) == k:
+                        for c in getattr(cell, axis).cells:
+                            if c.block is not self and c.values and v in c.values:
+                                c.values.remove(v)
+                                vals.add(v)
 
-        for v in filter(lambda v: len(colvals[v]) == 1, colvals):
-            col = colvals[v].pop()
-            for cell in self.cells:
-                if cell.coord[1] == col:
-                    for c in cell.column.cells:
-                        if c.block is not self and c.values and v in c.values:
-                            c.values.remove(v)
-                            vals.add(v)
+        apply(rowvals, 'row')
+        apply(colvals, 'column')
 
         return vals
+
 
 class Row(Group):
     def __init__(self, cells):
@@ -167,11 +182,13 @@ class Row(Group):
         for c in cells:
             c.row = self
 
+
 class Column(Group):
     def __init__(self, cells):
         super(Column,self).__init__(cells)
         for c in cells:
             c.column = self
+
 
 class Grid(object):
     def __init__(self, cells):
@@ -183,12 +200,13 @@ class Grid(object):
     def __iter__(self):
         return (x for y in self.cells for x in y)
 
+
 class Board(Grid):
     def __init__(self, cells=None):
-        super(Board,self).__init__(cells or [[Cell(i,j) for j in range(N)] for i in range(N)])
+        super(Board, self).__init__(cells or [[Cell(i, j) for j in range(N)] for i in range(N)])
 
         def block(m, n):
-            return [self.cells[i][j] for i in range(m*M,(m+1)*M) for j in range(n*M,(n+1)*M)]
+            return [self.cells[i][j] for i in range(m*M, (m+1)*M) for j in range(n*M, (n+1)*M)]
 
         def row(m):
             return [self.cells[m][j] for j in range(N)]
@@ -208,9 +226,9 @@ class Board(Grid):
                                         self if attr == 'cells' else getattr(self, attr)), 1)
 
     def search(self):
-        blocks = sorted([block.combinations() for block in self.blocks], key=len)
-        rows = sorted([row.combinations() for row in self.rows], key=len)
-        columns = sorted([column.combinations() for column in self.columns], key=len)
+        blocks = sorted([block.combinations() for block in self.blocks if block.values], key=len)
+        rows = sorted([row.combinations() for row in self.rows if row.values], key=len)
+        columns = sorted([column.combinations() for column in self.columns if column.values], key=len)
         return sorted(list(map(lambda x: next(iter(x)), filter(None,[blocks, rows, columns]))), key=len)
 
     def open(self, n=None):
@@ -226,11 +244,22 @@ class Board(Grid):
 
     def reduce(self):
         while True:
-            for cell in self.open(1):
+            for block in self.blocks:
+                block.reduce()
+
+            for row in self.rows:
+                row.reduce()
+
+            for column in self.columns:
+                column.reduce()
+
+            singles = list(self.open(1))
+            if not singles:
+                break
+
+            for cell in singles:
                 cell.value = next(iter(cell.values))
 
-            if not reduce(lambda x, y: x or y, [block.reduce() for block in self.blocks], False):
-                break
 
     @property
     def moves(self):
@@ -249,6 +278,7 @@ class Board(Grid):
     def __str__(self):
         return "\n".join([",".join(map(lambda x: str(x.value or 0),self.cells[i])) for i in range(N)])
 
+
 class Move(object):
     def __init__(self, marking, board=None, parent=None):
         self.parent = parent
@@ -264,11 +294,13 @@ class Move(object):
             self.valid = False
 
     def __str__(self):
-        return " ".join(map(lambda m: "{}={}".format("({},{})".format(*m[0]),m[1]), self.marking))
+        return " ".join(map(lambda m: "{}={}".format("({},{})".format(*m[0]), m[1]), self.marking))
+
 
 class Game(object):
     def __init__(self, move, max_depth=10):
         self._move = move
+        self._moves = []
         self._max_depth = max_depth
 
     def pop(self):
@@ -298,7 +330,8 @@ class Game(object):
                 return board
 
             for markings in board.search():
-                for move in list(map(lambda marking: Move(marking, board, self._move), markings)):
+                for move in map(lambda marking: Move(marking, board, self._move), markings):
+                    self._moves.append(move)
                     if not move.valid:
                         continue
 
@@ -310,12 +343,30 @@ class Game(object):
 
         return board
 
+    def stats(self):
+        return {
+            "depth": self.depth(),
+            "total_moves": len(self._moves),
+            "dead_ends": len(list(filter(lambda x: not x.valid, self._moves))),
+            "moves": list(map(str, self.moves()))
+        }
+
+    def moves(self):
+        move = self._move
+        moves = [move]
+        while move.parent:
+            move = move.parent
+            moves.append(move)
+        return reversed(moves)
+
+
 def game(marking):
     return Game(Move(marking))
 
+
 def board(marking):
     board = Board()
-    for c,v in marking:
+    for c, v in marking:
         board(*c).value = v
     return board
 
