@@ -344,11 +344,14 @@ class Game(object):
         return board
 
     def stats(self):
+        moves = list(self.moves())
         return {
             "depth": self.depth(),
             "total_moves": len(self._moves),
             "dead_ends": len(list(filter(lambda x: not x.valid, self._moves))),
-            "moves": list(map(str, self.moves()))
+            "moves": list(map(str, moves[1:])),
+            "init": str(moves[0]),
+            "solution": str(self.board()).split('\n')
         }
 
     def moves(self):
