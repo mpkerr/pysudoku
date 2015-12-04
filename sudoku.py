@@ -1,7 +1,7 @@
 from functools import reduce
 from itertools import product, combinations
 from copy import copy
-from collections import namedtuple
+from collections import namedtuple, OrderedDict
 import operator
 
 M = 3
@@ -302,6 +302,7 @@ class Game(object):
         self._move = move
         self._moves = []
         self._max_depth = max_depth
+        self._depth = 0
 
     def pop(self):
         self._move = self._move.parent
@@ -309,6 +310,7 @@ class Game(object):
 
     def push(self, move):
         self._move = move
+        self._depth = max(self._depth, self.depth())
         return self.board()
 
     def board(self):
@@ -345,14 +347,16 @@ class Game(object):
 
     def stats(self):
         moves = list(self.moves())
-        return {
-            "depth": self.depth(),
-            "total_moves": len(self._moves),
-            "dead_ends": len(list(filter(lambda x: not x.valid, self._moves))),
-            "moves": list(map(str, moves[1:])),
-            "init": str(moves[0]),
-            "solution": str(self.board()).split('\n')
-        }
+        return OrderedDict([
+            ("depth", self.depth()),
+            ("max_depth", self._depth),
+            ("total_moves", len(self._moves)),
+            ("dead_ends", len(list(filter(lambda x: not x.valid, self._moves)))),
+            ("init", str(moves[0])),
+            ("moves", list(map(str, moves[1:]))),
+            ("board", str(self.board()).split('\n')),
+            ("terminal", self.board().terminal())
+        ])
 
     def moves(self):
         move = self._move
