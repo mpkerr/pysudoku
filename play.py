@@ -10,4 +10,4 @@ def main(args=None):
 if __name__ == "__main__":
     import sys
     import json
-    print(json.dumps(main(sys.argv[1:]).stats(), indent=4))
+    print(json.dumps(main(sys.argv[1:]).stats(), sort_keys=True, indent=4))
