@@ -1,28 +1,22 @@
-from sudoku import game, board
+from sudoku import Board
+from random import choice, shuffle
+from itertools import product
 
-easy_marking = [(k,v) for k,v in {
-    (0,0): 9, (0,3): 1,
-    (1,5): 8, (1,6): 5, (1,8): 6,
-    (2,3): 5, (2,4): 9, (2,5): 2, (2,6): 3,
-    (3,2): 1, (3,3): 3, (3,7): 6,
-    (4,0): 4, (4,1): 2, (4,3): 7, (4,4): 8, (4,5): 6, (4,7): 1, (4,8): 5,
-    (5,1): 7, (5,5): 1, (5,6): 4,
-    (6,2): 6, (6,3): 8, (6,4): 2, (6,5): 4,
-    (7,0): 1, (7,2): 5, (7,3): 9,
-    (8,5): 5, (8,8): 3
-}.items()]
-easy = game(easy_marking)
 
-hard_marking = {
-    (0,5): 8, (0,8): 1,
-    (1,1): 9, (1,2): 6, (1,6): 8, (1,8): 7,
-    (2,4): 3, (2,5): 7, (2,7):6,
-    (3,0): 6, (3,3): 2, (3,4): 1, (3,7): 3, (3,8): 4,
-    (4,2): 3, (4,6): 1,
-    (5,0): 5, (5,1): 1, (5,4): 4, (5,5): 3, (5,8): 9,
-    (6,1): 3, (6,3): 5, (6,4): 2,
-    (7,0): 2, (7,2): 4, (7,6): 9, (7,7): 5,
-    (8,0): 1, (8,3): 8
-}
-hard = board(hard_marking.items())
+def random_board():
+    def randrow(row):
+        # randomize values of each cell across a row and choose a single combination
+        values = [list(c.values) for c in row]
+        for v in values:
+            shuffle(v)
+        return next(map(lambda x: list(zip([c.coord for c in row], x)), filter(lambda x: len(x) == len(set(x)), product(*values))))
 
+    board = Board()
+    for cell in board.rows[0]:
+        cell.value = choice(list(cell.values))
+
+    for row in board.rows[1:]:
+        for c, v in randrow(row):
+            board(*c).value = v
+
+    return board

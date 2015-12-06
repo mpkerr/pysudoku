@@ -122,8 +122,8 @@ class Group(Unit):
 
     def update(self, value):
         self.values.remove(value)
-        for c in filter(lambda x: x.values, self.cells):
-            c.values &= self.values
+        for c in filter(lambda x: x.values and value in x.values, self.cells):
+            c.values.remove(value)
             if len(c.values) == 0:
                 raise IllegalBoard()
 
