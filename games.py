@@ -1,4 +1,5 @@
 from sudoku import Board
+from game import Game, Move
 from random import choice, shuffle
 from itertools import product
 
@@ -11,12 +12,24 @@ def random_board():
             shuffle(v)
         return next(map(lambda x: list(zip([c.coord for c in row], x)), filter(lambda x: len(x) == len(set(x)), product(*values))))
 
-    board = Board()
-    for cell in board.rows[0]:
+    b = Board()
+    for cell in b.rows[0]:
         cell.value = choice(list(cell.values))
 
-    for row in board.rows[1:]:
+    for row in b.rows[1:]:
         for c, v in randrow(row):
-            board(*c).value = v
+            b(*c).value = v
 
-    return board
+    return b
+
+
+def board(marking):
+    b = Board()
+    for c, v in marking:
+        b(*c).value = v
+    return b
+
+
+def game(marking):
+    return Game(Move(marking))
+

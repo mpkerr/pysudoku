@@ -1,7 +1,7 @@
 from functools import reduce
 from itertools import product, combinations
 from copy import copy
-from collections import namedtuple, OrderedDict, Counter
+from collections import namedtuple, Counter
 import operator
 
 M = 3
@@ -65,12 +65,29 @@ class Cell(Unit):
 
     @value.setter
     def value(self, value):
-        if not self.validate_move(value):
-            raise IllegalMove(self.coord, value)
-        self._value = value
-        self.values = None
-        for x in [self.block, self.row, self.column]:
-            x.update(value)
+        if value:
+            if not self.validate_move(value):
+                raise IllegalMove(self.coord, value)
+            self._value = value
+            self.values = None
+            for group in self.groups:
+                group.values.remove(value)
+                for cell in filter(lambda c: c.values and value in c.values, group.cells):
+                    cell.values.remove(value)
+                    if len(cell.values) == 0:
+                        raise IllegalBoard()
+        elif value != self._value:
+            for group in self.groups:
+                group.values.add(self.value)
+            self.values = set([self._value])
+            self._value = None
+            for group in self.groups:
+                for cell in filter(lambda c: c.values, group.cells):
+                    cell.values |= cell.block.values & cell.row.values & cell.column.values
+
+    @property
+    def groups(self):
+        return [self.block, self.row, self.column]
 
     @property
     def block(self):
@@ -119,13 +136,6 @@ class Group(Unit):
     @property
     def stats(self):
         return self._stats
-
-    def update(self, value):
-        self.values.remove(value)
-        for c in filter(lambda x: x.values and value in x.values, self.cells):
-            c.values.remove(value)
-            if len(c.values) == 0:
-                raise IllegalBoard()
 
     def open(self, n=None):
         for c in self._cells:
@@ -303,102 +313,5 @@ class Board(Grid):
     def __str__(self):
         return "\n".join([",".join(map(lambda x: str(x.value or 0), self.cells[i])) for i in range(N)])
 
-
-class Move(object):
-    def __init__(self, marking, board=None, parent=None):
-        self.parent = parent
-        self.marking = marking
-        self.board = copy(board) if board else Board()
-
-        try:
-            for cell, value in marking:
-                self.board(*cell).value = value
-            self.board.reduce()
-            self.valid = True
-        except (IllegalBoard, IllegalMove):
-            self.valid = False
-
-    def __str__(self):
-        return " ".join(map(lambda m: "{}={}".format("({},{})".format(*m[0]), m[1]), self.marking))
-
-
-class Game(object):
-    def __init__(self, move, max_depth=10):
-        self._move = move
-        self._moves = []
-        self._max_depth = max_depth
-        self._depth = 0
-
-    def pop(self):
-        self._move = self._move.parent
-        return self.board()
-
-    def push(self, move):
-        self._move = move
-        self._depth = max(self._depth, self.depth())
-        return self.board()
-
-    def board(self):
-        return self._move.board
-
-    def depth(self):
-        depth = 0
-        move = self._move
-        while move.parent:
-            move = move.parent
-            depth += 1
-        return depth
-
-    def play(self, board=None):
-        board = board or self.board()
-
-        if not board.terminal():
-            if self.depth() >= self._max_depth:
-                return board
-
-            for markings in board.search():
-                for move in map(lambda marking: Move(marking, board, self._move), markings):
-                    self._moves.append(move)
-                    if not move.valid:
-                        continue
-
-                    board = self.play(self.push(move))
-                    if board.terminal():
-                        return board
-
-                    board = self.pop()
-
-        return board
-
-    def stats(self):
-        moves = list(self.moves())
-        return OrderedDict([
-            ("depth", self.depth()),
-            ("max_depth", self._depth),
-            ("total_moves", len(self._moves) - 1),
-            ("dead_ends", len(list(filter(lambda x: not x.valid, self._moves)))),
-            ("init", str(moves[0])),
-            ("moves", list(map(str, moves[1:]))),
-            ("board", str(self.board()).split('\n')),
-            ("terminal", self.board().terminal())
-        ])
-
-    def moves(self):
-        move = self._move
-        moves = [move]
-        while move.parent:
-            move = move.parent
-            moves.append(move)
-        return reversed(moves)
-
-
-def game(marking):
-    return Game(Move(marking))
-
-
-def board(marking):
-    board = Board()
-    for c, v in marking:
-        board(*c).value = v
-    return board
-
+    def marking(self):
+        return [(c.coord, c.value) for c in self if c.value]
