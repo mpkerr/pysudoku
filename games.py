@@ -10,7 +10,8 @@ def random_board():
         values = [list(c.values) for c in row]
         for v in values:
             shuffle(v)
-        return next(map(lambda x: list(zip([c.coord for c in row], x)), filter(lambda x: len(x) == len(set(x)), product(*values))))
+        return next(map(lambda x: list(zip([c.coord for c in row], x)),
+                        filter(lambda x: len(x) == len(set(x)), product(*values))))
 
     b = Board()
     for cell in b.rows[0]:

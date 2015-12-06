@@ -310,8 +310,13 @@ class Board(Grid):
     def moves(self):
         return self._moves
 
+    @property
+    def marking(self):
+        return [(c.coord, c.value) for c in self if c.value]
+
     def __str__(self):
         return "\n".join([",".join(map(lambda x: str(x.value or 0), self.cells[i])) for i in range(N)])
 
-    def marking(self):
-        return [(c.coord, c.value) for c in self if c.value]
+    def __repr__(self):
+        return str(self.marking)
+
