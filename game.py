@@ -1,6 +1,5 @@
 from sudoku import Board, IllegalBoard, IllegalMove
 from copy import copy
-from math import log, ceil
 
 
 class Game(object):
@@ -54,15 +53,19 @@ class Game(object):
     def stats(self):
         moves = list(self.moves())
         return dict(
-            complexity=ceil(log(moves[0].board.complexity())),
             depth=self.depth(),
             max_depth=self._depth,
-            total_moves= len(self._moves) - 1,
+            total_moves=len(moves) - 1,
             dead_ends=len(list(filter(lambda x: not x.valid, self._moves))),
             init=str(moves[0]),
             moves=list(map(str, moves[1:])),
             board=str(self.board()).split('\n'),
-            terminal=self.board().terminal()
+            terminal=self.board().terminal(),
+            stats=[dict(board=moves[k].board.stats,
+                    block=moves[k].board.block_stats,
+                    row=moves[k].board.row_stats,
+                    column=moves[k].board.column_stats)
+                   for k in range(len(moves))],
         )
 
     def moves(self):

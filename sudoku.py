@@ -3,6 +3,7 @@ from itertools import product, combinations
 from copy import copy
 from collections import namedtuple, Counter
 import operator
+import math
 
 M = 3
 N = M ** 2
@@ -262,7 +263,7 @@ class Board(Grid):
         return Board([[copy(self.cells[i][j]) for j in range(N)] for i in range(N)])
 
     def complexity(self, attr='blocks'):
-        return reduce(operator.mul, map(lambda x: len(x.values) if x.values else 1,
+        return reduce(operator.add, map(lambda x: math.log(len(x.values)) if x.values else 0,
                                         self if attr == 'cells' else getattr(self, attr)), 1)
 
     def search(self):
@@ -283,6 +284,8 @@ class Board(Grid):
         return True
 
     def reduce(self):
+        self.stats['complexity'] = self.complexity()
+
         while True:
             self.stats['reduce'] += 1
 
