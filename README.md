@@ -22,7 +22,8 @@ _ 5 _ _ _ _ _ _ 7
 ```
 
 Blank lines are ignored. Blank grid entries can be represented as either 
-"0", "_", or ".".
+"0", "_", or ".". Across a line tokens must be separated by at least one
+space.
 
 Input files must match the dimension specifications matching the M and N
 values in sudoku.py.
