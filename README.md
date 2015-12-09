@@ -40,7 +40,7 @@ invariant removal.
 Game Generator
 --------------
 
-In games.py are a number of utility methods to generate board and games, 
+In games.py are a number of utility methods to generate boards and games, 
 including methods to generate random games at given difficulty levels. 
 Difficulty rating is an inexact measure but roughly speaking games of
 difficulty less than 8 are relatively easy, between 8 and 15 are medium, 
