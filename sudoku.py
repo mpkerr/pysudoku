@@ -156,7 +156,6 @@ class Group(Unit):
 
         for count in range(2, M+1):
             pairs = list(self.open(count))
-            self._stats[count] = len(pairs)
             if len(pairs) >= count:
                 for pairwise in combinations(pairs, count):
                     if reduce(operator.eq, map(lambda x: x.values, pairwise)):
