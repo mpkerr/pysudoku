@@ -40,8 +40,7 @@ def create_board(difficulty, b=None):
         b = random_board()
 
     def rank(b):
-        from math import ceil, log
-        return ceil(log(b.complexity()))
+        return b.complexity()
 
     while rank(b) < difficulty:
         # pick a value to erase
