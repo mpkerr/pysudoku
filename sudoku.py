@@ -274,7 +274,7 @@ class Board(Grid):
 
     def complexity(self, attr='blocks'):
         return reduce(operator.add, map(lambda x: math.log(len(x.values)) if x.values else 0,
-                                        self if attr == 'cells' else getattr(self, attr)), 1)
+                                        self if attr == 'cells' else getattr(self, attr)), 0)
 
     def search(self):
         blocks = sorted([block.combinations() for block in self.blocks if block.values], key=len)
