@@ -25,8 +25,8 @@ Blank lines are ignored. Blank grid entries can be represented as either
 "0", "_", or ".". Across a line tokens must be separated by at least one
 space.
 
-Input files must match the dimension specifications matching the M and N
-values in sudoku.py.
+Input files must match the dimension specification values (M, N) in 
+sudoku.py. Update the M value to play sudoku games of desired dimension.
 
 Solver
 ------
@@ -36,3 +36,12 @@ possible cell values. Much of the extant sudoku game inventory essentially
 reduces to the application of basic logical invariants. More complex games
 involve a recursive tree search where multiple possible moves remain after
 invariant removal.
+
+Game Generator
+--------------
+
+In games.py are a number of utility methods to generate board and games, 
+including methods to generate random games at given difficulty levels. 
+Difficulty rating is an inexact measure but roughly speaking games of
+difficulty less than 8 are relatively easy, between 8 and 15 are medium, 
+and greater than 15 are most difficult. Games above 20 are very difficult.
