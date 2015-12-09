@@ -31,7 +31,7 @@ Solver
 ------
 
 The basic approach is to reduce a game board, or, equivalently, to eliminate
-possible cell values. Much of the extend sudoku game inventory essentially
+possible cell values. Much of the extant sudoku game inventory essentially
 reduces to the application of basic logical invariants. More complex games
 involve a recursive tree search where multiple possible moves remain after
 invariant removal.
