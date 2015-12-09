@@ -48,7 +48,7 @@ same column or row.
 greater than n cells that can take on a given combination of n values.
 
 * single elimination coerces a cell that can take on only a single value
-to that value
+to that value.
 
 Game Generator
 --------------
