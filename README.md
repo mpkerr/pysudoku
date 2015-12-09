@@ -28,6 +28,9 @@ space.
 Input files must match the dimension specification values (M, N) in 
 sudoku.py. Update the M value to play sudoku games of desired dimension.
 
+The core system accepts tuples ((i,j),v) where (i,j) are the coordinates
+of a grid cell (0-based indexing) and v is a cell value.
+
 Solver
 ------
 
