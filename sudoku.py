@@ -21,6 +21,7 @@ class IllegalBoard(BaseException):
 
 
 class Unit(object):
+    """A Unit has a set of available values"""
     def __init__(self, values):
         self._values = values
 
@@ -34,6 +35,8 @@ class Unit(object):
 
 
 class Cell(Unit):
+    """A Cell represents an entry in a sudoku grid. A Cell belongs
+    to three groups: a block, a row, and a column"""
     Coord = namedtuple('Coord', ['row', 'column'])
 
     def __init__(self, row, column, value=None, values=None):
@@ -53,9 +56,6 @@ class Cell(Unit):
     def __ne__(self, other):
         return self._coord != other._coord or self._value != other._value
 
-    def validate_move(self, value):
-        return not self.value and value in self.values
-
     @property
     def coord(self):
         return self._coord
@@ -67,7 +67,7 @@ class Cell(Unit):
     @value.setter
     def value(self, value):
         if value:
-            if not self.validate_move(value):
+            if not self.value and value not in self.values:
                 raise IllegalMove(self.coord, value)
             self._value = value
             self.values = None
@@ -122,6 +122,7 @@ class Cell(Unit):
 
 
 class Group(Unit):
+    """A Group represents a collection of cells. Either a Block, a Row, or a Column"""
     def __init__(self, cells):
         super(Group, self).__init__(reduce(lambda x, y: x | y, filter(None, map(lambda x: x.values, cells)), set()))
         self._cells = cells
@@ -149,6 +150,8 @@ class Group(Unit):
                         filter(lambda x: len(x) == len(set(x)), product(*[c.values for c in cells]))))
 
     def reduce(self):
+        """Apply n-ary exclusion to reduce the possible values available
+        to cells in this group"""
         vals = set()
 
         for count in range(2, M+1):
@@ -170,12 +173,15 @@ class Group(Unit):
 
 
 class Block(Group):
+    """A Block is a MxM group of adjacent cells"""
     def __init__(self, cells):
         super(Block, self).__init__(cells)
         for c in cells:
             c.block = self
 
     def reduce(self):
+        """Apply hidden-value elimination to reduce the possible
+        values available to cells in this block"""
         vals = super(Block, self).reduce()
 
         rowvals = {v: set() for v in self.values}
@@ -207,6 +213,7 @@ class Block(Group):
 
 
 class Row(Group):
+    """A Row is a Group of cells belonging to the same row"""
     def __init__(self, cells):
         super(Row, self).__init__(cells)
         for c in cells:
@@ -214,6 +221,7 @@ class Row(Group):
 
 
 class Column(Group):
+    """A Column is a Group of cells belonging to the same column"""
     def __init__(self, cells):
         super(Column, self).__init__(cells)
         for c in cells:
@@ -221,6 +229,7 @@ class Column(Group):
 
 
 class Grid(object):
+    """A Grid is a square matrix of cells"""
     def __init__(self, cells):
         self.cells = cells
 
@@ -232,6 +241,7 @@ class Grid(object):
 
 
 class Board(Grid):
+    """A Board is a collection of Cells in a sudoku Grid"""
     def __init__(self, cells=None):
         super(Board, self).__init__(cells or [[Cell(i, j) for j in range(N)] for i in range(N)])
 
@@ -284,6 +294,8 @@ class Board(Grid):
         return True
 
     def reduce(self):
+        """Apply single-elimination and group reduction to reduce the
+        space of values available to cells in this board"""
         self.stats['complexity'] = self.complexity()
 
         while True:
@@ -315,7 +327,7 @@ class Board(Grid):
 
     @property
     def marking(self):
-        return [(c.coord, c.value) for c in self if c.value]
+        return [((c.coord.row, c.coord.column), c.value) for c in self if c.value]
 
     def __str__(self):
         return "\n".join([",".join(map(lambda x: str(x.value or 0), self.cells[i])) for i in range(N)])
