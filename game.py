@@ -39,9 +39,9 @@ class Game(object):
             board=str(self.board).split('\n'),
             terminal=self.board.terminal(),
             stats=[dict(board=moves[k].board.stats,
-                    block=moves[k].board.block_stats,
-                    row=moves[k].board.row_stats,
-                    column=moves[k].board.column_stats)
+                        block=moves[k].board.block_stats,
+                        row=moves[k].board.row_stats,
+                        column=moves[k].board.column_stats)
                    for k in range(len(moves))],
         )
 
