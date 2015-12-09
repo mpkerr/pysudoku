@@ -37,6 +37,13 @@ reduces to the application of basic logical invariants. More complex games
 involve a recursive tree search where multiple possible moves remain after
 invariant removal.
 
+A hidden block elimination applies when a value may only appear in a single 
+row or column of a block, and thus cannot apply to the cells shared in the
+same column or row.
+
+n-ary eliminations apply within blocks, cells, or rows where there exists
+greater than n cells that can take on a given combination of n values.
+
 Game Generator
 --------------
 
