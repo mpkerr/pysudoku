@@ -1,5 +1,5 @@
 from functools import reduce
-from itertools import product, combinations
+from itertools import product, combinations, chain
 from copy import copy
 from collections import namedtuple, Counter
 import operator
@@ -304,14 +304,8 @@ class Board(Grid):
                 cell.value = next(iter(cell.values))
                 self.stats['singles'] += 1
 
-            for block in self.blocks:
-                block.reduce()
-
-            for column in self.columns:
-                column.reduce()
-
-            for row in self.rows:
-                row.reduce()
+            for group in chain(self.blocks, self.columns, self.rows):
+                group.reduce()
 
             if not next(self.open(1), None):
                 break
