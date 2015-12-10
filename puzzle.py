@@ -2,7 +2,7 @@ def load_su(filename):
     marking = []
     with open(filename, 'r') as file:
         row = 0
-        for line in filter(None,map(str.strip,file)):
+        for line in filter(None, map(str.strip, file)):
             column = 0
             for token in line.split():
                 if token not in "_0.":
