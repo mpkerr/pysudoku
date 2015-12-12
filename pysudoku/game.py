@@ -5,7 +5,6 @@ from .sudoku import Board, IllegalBoard, IllegalMove
 class Game(object):
     def __init__(self, move):
         self._root = move
-        self._visited = set()
 
     @property
     def root(self):
@@ -65,8 +64,7 @@ class Game(object):
     def play(self, move=None):
         move = move or self._root
 
-        if move.board.terminal and move.board not in self._visited:
-            self._visited.add(move.board)
+        if move.board.terminal:
             yield move
         else:
             for markings in move.board.search():

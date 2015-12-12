@@ -5,17 +5,24 @@ from pprint import pprint
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument(type=str, dest='puzzle', help='sudoku puzzle file name')
-    parser.add_argument('-a', '--all', dest='all', action='store_true')
-    args = parser.parse_args()
+    def solve(g):
+        pprint(g.stats(next(g.play())))
 
-    g = game(load_su(args.puzzle))
-
-    if args.all:
+    def moves(g):
         for move in g.play():
             pprint(g.stats(move))
-    else:
-        pprint(g.stats(next(g.play())))
+
+    def boards(g):
+        for board in set(map(lambda x: x.board, g.play())):
+            print("{}\n".format(board))
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-p', '--puzzle', type=str, dest='puzzle', help='sudoku puzzle file name')
+    subparsers = parser.add_subparsers()
+    subparsers.add_parser('solve').set_defaults(func=solve)
+    subparsers.add_parser('moves').set_defaults(func=moves)
+    subparsers.add_parser('boards').set_defaults(func=boards)
+    args = parser.parse_args()
+    args.func(game(load_su(args.puzzle)))
 
     return 0
