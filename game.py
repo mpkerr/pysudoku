@@ -1,23 +1,22 @@
 from sudoku import Board, IllegalBoard, IllegalMove
 from copy import copy
-from functools import reduce
-import operator
 
 
 class Game(object):
     def __init__(self, move, max_depth=10):
-        self._move = move
         self._max_depth = max_depth
-        self._depth = 0
+        self._root = move
+        self._move = move
 
     def push(self, move):
         self._move = move
-        self._depth = max(self._depth, self.depth)
-        return self.board
 
     def pop(self):
         self._move = self._move.parent
-        return self.board
+
+    @property
+    def root(self):
+        return self._root
 
     @property
     def move(self):
@@ -28,77 +27,74 @@ class Game(object):
         return self._move.board
 
     @property
-    def stats(self):
-        moves = list(self.moves)
-        return dict(
-            depth=self.depth,
-            max_depth=self._depth,
-            dead=self.dead,
-            init=str(moves[0]),
-            moves=list(map(str, moves[1:])),
-            board=str(self.board).split('\n'),
-            terminal=self.board.terminal(),
-            stats=[dict(board=moves[k].board.stats,
-                        block=moves[k].board.block_stats,
-                        row=moves[k].board.row_stats,
-                        column=moves[k].board.column_stats)
-                   for k in range(len(moves))],
-        )
+    def leafs(self):
+        leafs = []
+
+        def leafs_(move):
+            if not move.moves:
+                leafs.append(move)
+            else:
+                for m in move.moves:
+                    leafs_(m)
+
+        leafs_(self._root)
+        return leafs
+
+    @property
+    def solutions(self):
+        return list(filter(lambda x: x.valid, self.leafs))
 
     @property
     def dead(self):
-        def _dead(move):
-            if not move.valid:
-                return 1
-            return reduce(operator.add, map(_dead, move.moves), 0)
+        return list(filter(lambda x: not x.valid, self.leafs))
 
-        return _dead(self.root)
-
-    @property
-    def root(self):
-        move = self._move
+    @staticmethod
+    def depth(move):
+        depth = 0
         while move.parent:
+            depth += 1
             move = move.parent
-        return move
+        return depth
 
-    @property
-    def moves(self):
-        move = self._move
+    @staticmethod
+    def moves(move):
         moves = [move]
         while move.parent:
             move = move.parent
             moves.append(move)
-        return reversed(moves)
+        return list(reversed(moves))
 
     @property
-    def depth(self):
-        depth = 0
-        move = self._move
-        while move.parent:
-            move = move.parent
-            depth += 1
-        return depth
+    def stats(self):
+        def stats_(move):
+            moves = list(Game.moves(move))
+            return dict(
+                depth=Game.depth(move),
+                init=str(moves[0]),
+                moves=list(map(str, moves[1:])),
+                board=str(move.board).split('\n'),
+                terminal=move.board.terminal(),
+                stats=[dict(board=moves[k].board.stats,
+                            block=getattr(moves[k].board, 'block_stats', None),
+                            row=getattr(moves[k].board, 'row_stats', None),
+                            column=getattr(moves[k].board, 'column_stats', None))
+                       for k in range(len(moves))],
+            )
+        return map(stats_, self.solutions)
 
-    def play(self, board=None):
-        board = board or self.board
-
-        if not board.terminal():
-            if self.depth >= self._max_depth:
-                return board
-
-            for markings in board.search():
-                for move in map(lambda marking: Move(marking, board, self._move), markings):
+    def play(self):
+        if not self.board.terminal():
+            for markings in self.board.search():
+                for move in map(lambda marking: Move(marking, self.board, self.move), markings):
                     self.move.append(move)
                     if not move.valid:
                         continue
 
-                    board = self.play(self.push(move))
-                    if board.terminal():
-                        return board
+                    self.push(move)
+                    self.play()
+                    self.pop()
 
-                    board = self.pop()
-
-        return board
+        yield self.move
 
 
 class Move(object):

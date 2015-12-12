@@ -4,7 +4,7 @@ from games import game
 
 def main(args=None):
     g = game(load_su(args[0]))
-    g.play()
+    filter(lambda x: x.valid, g.play())
     return g
 
 if __name__ == "__main__":
