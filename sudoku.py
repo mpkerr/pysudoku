@@ -286,6 +286,7 @@ class Board(Grid):
             if not c.value and (n is None or len(c.values) == n):
                 yield c
 
+    @property
     def terminal(self):
         for cell in self:
             if not cell.value:

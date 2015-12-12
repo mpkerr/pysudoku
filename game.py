@@ -42,7 +42,7 @@ class Game(object):
 
     @property
     def solutions(self):
-        return list(filter(lambda x: x.valid, self.leafs))
+        return list(filter(lambda x: x.board.terminal, self.leafs))
 
     @property
     def dead(self):
@@ -73,7 +73,7 @@ class Game(object):
                 init=str(moves[0]),
                 moves=list(map(str, moves[1:])),
                 board=str(move.board).split('\n'),
-                terminal=move.board.terminal(),
+                terminal=move.board.terminal,
                 stats=[dict(board=moves[k].board.stats,
                             block=getattr(moves[k].board, 'block_stats', None),
                             row=getattr(moves[k].board, 'row_stats', None),
@@ -83,7 +83,7 @@ class Game(object):
         return map(stats_, self.solutions)
 
     def play(self):
-        if not self.board.terminal():
+        if not self.board.terminal:
             for markings in self.board.search():
                 for move in map(lambda marking: Move(marking, self.board, self.move), markings):
                     self.move.append(move)
