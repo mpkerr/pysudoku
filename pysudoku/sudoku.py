@@ -268,6 +268,9 @@ class Board(Grid):
     def __ne__(self, other):
         return not self == other
 
+    def __hash__(self):
+        return hash(str(self))
+
     def __copy__(self):
         return Board([[copy(self.cells[i][j]) for j in range(N)] for i in range(N)])
 

@@ -1,13 +1,21 @@
-from puzzle import load_su
-from games import game
+from pysudoku.puzzle import load_su
+from pysudoku.games import game
+import argparse
+from pprint import pprint
 
 
-def main(args=None):
-    g = game(load_su(args[0]))
-    next(g.play())
-    return g
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(type=str, dest='puzzle', help='sudoku puzzle file name')
+    parser.add_argument('-a', '--all', dest='all', action='store_true')
+    args = parser.parse_args()
 
-if __name__ == "__main__":
-    import sys
-    import json
-    print(json.dumps(main(sys.argv[1:]).stats, indent=4))
+    g = game(load_su(args.puzzle))
+
+    if args.all:
+        for move in g.play():
+            pprint(g.stats(move))
+    else:
+        pprint(g.stats(next(g.play())))
+
+    return 0

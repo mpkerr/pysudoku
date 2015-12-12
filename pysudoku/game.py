@@ -1,36 +1,34 @@
-from sudoku import Board, IllegalBoard, IllegalMove
 from copy import copy
+from .sudoku import Board, IllegalBoard, IllegalMove
 
 
 class Game(object):
     def __init__(self, move):
         self._root = move
+        self._visited = set()
 
     @property
     def root(self):
         return self._root
 
     @property
-    def leafs(self):
-        leafs = []
-
-        def leafs_(move):
+    def leaves(self):
+        def leaves_(move):
             if not move.moves:
-                leafs.append(move)
+                yield move
             else:
                 for m in move.moves:
-                    leafs_(m)
+                    yield from leaves_(m)
 
-        leafs_(self._root)
-        return leafs
+        yield from leaves_(self._root)
 
     @property
     def solutions(self):
-        return list(filter(lambda x: x.board.terminal, self.leafs))
+        return list(filter(lambda x: x.board.terminal, self.leaves))
 
     @property
     def dead(self):
-        return list(filter(lambda x: not x.valid, self.leafs))
+        return list(filter(lambda x: not x.valid, self.leaves))
 
     @staticmethod
     def depth(move):
@@ -46,30 +44,29 @@ class Game(object):
         while move.parent:
             move = move.parent
             moves.append(move)
-        return list(reversed(moves))
+        return reversed(moves)
 
-    @property
-    def stats(self):
-        def stats_(move):
-            moves = list(Game.moves(move))
-            return dict(
-                depth=Game.depth(move),
-                init=str(moves[0]),
-                moves=list(map(str, moves[1:])),
-                board=str(move.board).split('\n'),
-                terminal=move.board.terminal,
-                stats=[dict(board=moves[k].board.stats,
-                            block=getattr(moves[k].board, 'block_stats', None),
-                            row=getattr(moves[k].board, 'row_stats', None),
-                            column=getattr(moves[k].board, 'column_stats', None))
-                       for k in range(len(moves))],
-            )
-        return list(map(stats_, self.solutions))
+    @staticmethod
+    def stats(move):
+        moves = list(Game.moves(move))
+        return dict(
+            depth=Game.depth(move),
+            init=str(moves[0]),
+            moves=list(map(str, moves[1:])),
+            board=str(move.board).split('\n'),
+            terminal=move.board.terminal,
+            stats=[dict(board=moves[k].board.stats,
+                        block=getattr(moves[k].board, 'block_stats', None),
+                        row=getattr(moves[k].board, 'row_stats', None),
+                        column=getattr(moves[k].board, 'column_stats', None))
+                   for k in range(len(moves))],
+        )
 
     def play(self, move=None):
         move = move or self._root
 
-        if move.board.terminal:
+        if move.board.terminal and move.board not in self._visited:
+            self._visited.add(move.board)
             yield move
         else:
             for markings in move.board.search():

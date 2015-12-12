@@ -1,7 +1,7 @@
-from sudoku import Board, IllegalBoard, V, N
-from game import Game, Move
 from random import choice, shuffle
 from itertools import product
+from .sudoku import Board, IllegalBoard, V, N
+from .game import Game, Move
 
 
 def random_board():
