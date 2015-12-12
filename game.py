@@ -3,28 +3,12 @@ from copy import copy
 
 
 class Game(object):
-    def __init__(self, move, max_depth=10):
-        self._max_depth = max_depth
+    def __init__(self, move):
         self._root = move
-        self._move = move
-
-    def push(self, move):
-        self._move = move
-
-    def pop(self):
-        self._move = self._move.parent
 
     @property
     def root(self):
         return self._root
-
-    @property
-    def move(self):
-        return self._move
-
-    @property
-    def board(self):
-        return self._move.board
 
     @property
     def leafs(self):
@@ -80,21 +64,21 @@ class Game(object):
                             column=getattr(moves[k].board, 'column_stats', None))
                        for k in range(len(moves))],
             )
-        return map(stats_, self.solutions)
+        return list(map(stats_, self.solutions))
 
-    def play(self):
-        if not self.board.terminal:
-            for markings in self.board.search():
-                for move in map(lambda marking: Move(marking, self.board, self.move), markings):
-                    self.move.append(move)
+    def play(self, move=None):
+        move = move or self._root
+
+        if move.board.terminal:
+            yield move
+        else:
+            for markings in move.board.search():
+                for attempt in map(lambda marking: Move(marking, move.board, move), markings):
+                    move.append(attempt)
                     if not move.valid:
                         continue
 
-                    self.push(move)
-                    self.play()
-                    self.pop()
-
-        yield self.move
+                    yield from self.play(attempt)
 
 
 class Move(object):
