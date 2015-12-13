@@ -299,14 +299,17 @@ class Board(Grid):
     def reduce(self):
         """Apply single-elimination and group reduction to reduce the
         space of values available to cells in this board"""
-        self.stats['complexity'] = self.complexity()
+        self.stats['initial_complexity'] = self.complexity()
+
+        moves = []
 
         while True:
-            self.stats['reduce'] += 1
+            moves.append([])
 
             for cell in self.open(1):
                 cell.value = next(iter(cell.values))
                 self.stats['singles'] += 1
+                moves[-1].append((tuple(cell.coord), cell.value))
 
             for group in chain(self.blocks, self.columns, self.rows):
                 group.reduce()
@@ -317,6 +320,11 @@ class Board(Grid):
         self.block_stats = reduce(operator.add, map(lambda x: x.stats, self.blocks), Counter())
         self.row_stats = reduce(operator.add, map(lambda x: x.stats, self.rows), Counter())
         self.column_stats = reduce(operator.add, map(lambda x: x.stats, self.columns), Counter())
+
+        self.stats['final_complexity'] = self.complexity()
+        self.stats['reduce'] += len(moves)
+
+        return moves
 
     @property
     def moves(self):

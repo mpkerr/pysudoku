@@ -57,7 +57,8 @@ class Game(object):
             stats=[dict(board=moves[k].board.stats,
                         block=getattr(moves[k].board, 'block_stats', None),
                         row=getattr(moves[k].board, 'row_stats', None),
-                        column=getattr(moves[k].board, 'column_stats', None))
+                        column=getattr(moves[k].board, 'column_stats', None),
+                        invariants=moves[k].invariants)
                    for k in range(len(moves))],
         )
 
@@ -86,7 +87,7 @@ class Move(object):
         try:
             for cell, value in marking:
                 self.board(*cell).value = value
-            self.board.reduce()
+            self.invariants = self.board.reduce()
             self.valid = True
         except (IllegalBoard, IllegalMove):
             self.valid = False
