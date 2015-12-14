@@ -1,4 +1,5 @@
 from copy import copy
+from functools import reduce
 from .sudoku import Board, IllegalBoard, IllegalMove
 
 
@@ -49,6 +50,9 @@ class Game(object):
     def stats(move):
         moves = list(Game.moves(move))
         return dict(
+            complexity=reduce(lambda x, z: x + z[0] ** z[1],
+                              [(y.board.stats['initial_complexity'] - y.board.stats['final_complexity'], i+1)
+                               for i, y in enumerate(reversed(moves))], 0),
             depth=Game.depth(move),
             init=str(moves[0]),
             moves=list(map(str, moves[1:])),
