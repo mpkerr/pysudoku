@@ -17,7 +17,7 @@ def main():
             print("{}\n".format(board))
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-p', '--puzzle', type=str, dest='puzzle', help='sudoku puzzle file name')
+    parser.add_argument('-p', '--puzzle', type=str, dest='puzzle', default="-", help='sudoku puzzle file name')
     subparsers = parser.add_subparsers()
     subparsers.add_parser('solve').set_defaults(func=solve)
     subparsers.add_parser('moves').set_defaults(func=moves)
